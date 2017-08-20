@@ -91,6 +91,7 @@ div span {
                 switch (r.event) {
                     case 'Play':
                         render_play(r);
+                        proxy.last_result = r.args._result;
                     break;
 
                     case 'Balance':
