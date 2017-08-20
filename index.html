@@ -1,0 +1,267 @@
+<!doctype html>
+<html>
+<head>
+<title>ETHBlockByte</title>
+<meta charset="utf-8">
+<script type="text/javascript" src="node_modules/bignumber.js/bignumber.min.js"></script>
+<script type="text/javascript" src="node_modules/web3/dist/web3-light.js"></script>
+<style>
+body, input, button {
+    font-family: monospace;
+    font-size: 1.2rem;
+}
+section {
+}
+article {
+    border: 3px dashed #ddd;
+    margin-bottom: 20px;
+}
+span[id$='-max_fee'] {
+    color: #800;
+}
+span[id$='-balance'] {
+    color: #080;
+}
+.winner {
+    color: #080;
+}
+div {
+    font-weight: bold;
+    margin: 10px 0;
+    border-bottom: 1px dotted #ccc;
+}
+div span {
+    font-weight: normal;
+    float: right;
+}
+#error {
+    color: #f00;
+}
+</style>
+
+<script type="text/javascript" src="bin/conf.js"></script>
+<script type="text/javascript">
+
+    var bootstrap = function () {
+
+        var Web3 = require('web3');
+        var BigNumber = require('bignumber.js');
+        
+        if (typeof window.web3 !== 'undefined') {
+              var web3 = new Web3(window.web3.currentProvider);
+        } else {
+            // set the provider you want from Web3.providers, for local dev
+              var web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:8545"));
+        }
+
+        if (!web3.eth.accounts[0]) {
+            var interval = setInterval(function () {
+                if (web3.eth.accounts[0]) {
+                    clearInterval(interval);
+                    document.getElementById('error').innerText = '';
+                }
+                else {
+                    document.getElementById('error').innerText = 'Unlock metamstk account';
+                }
+            }, 5000);
+        }
+
+        var data = function  (address, contract) {
+            return {
+                contract: contract,
+                address: address,
+                name: null,
+                owner: null,
+                balance: 0,
+                max_fee: 0,
+                create_block: 0,
+                last_result: null
+            };
+        };
+
+        var init = function (address, contract) {
+            var proxy = new Proxy(data(address, contract), {
+                set: function (obj, prop, value) {
+                    obj[prop] = value;
+                    document.getElementById(address + '-' + prop).innerText = value;
+                    return true;
+                }
+            });
+            var all_events = proxy.contract.allEvents(function (e, r) {
+                switch (r.event) {
+                    case 'Play':
+                        render_play(r);
+                    break;
+
+                    case 'Balance':
+                        proxy.balance = r.args._balance;
+                    break;
+
+                    case 'Destroy':
+                        all_events.stopWatching();
+                    break;
+                }
+            });
+            render(proxy);
+            collect_data(proxy);
+        };
+
+        var collect_old_events = function (data) {
+            web3.eth.getBlockNumber(function (e, r) {
+                var to_block = r;
+                data.contract.Play({_sender: [web3.eth.accounts[0]]}, { fromBlock: data.create_block, toBlock: to_block }, function (e, r) {
+                    if (e) { console.log(e); return; }
+                    render_play(r);
+                });
+            });
+        };
+
+        var collect_data = function (data) {
+            var contract = data.contract;
+            web3.eth.getBalance(data.address, function (e, r) { data.balance = r; });
+            contract.name(function (e, r) { data.name = r; });
+            contract.owner(function (e, r) { data.owner = r; });
+            contract.max_fee(function (e, r) { data.max_fee = r; });
+            contract.create_block(function (e, r) {
+                data.create_block = r;
+                setTimeout(function () {
+                    collect_old_events(data);
+                }, 2000);
+            });
+            contract.last_result(function (e, r) { data.last_result = r; });
+        };
+
+        var render_play = function (play_event) {
+            id = play_event.transactionHash;
+            var el = document.getElementById(id);
+            if (!el) {
+                var article = document.getElementById(play_event.address);
+                var div = document.createElement('div');
+                div.id = id;
+                if (play_event.args._winner) {
+                    div.className = 'winner';
+                }
+                var text = document.createTextNode(play_event.args._time + ': ' + play_event.args._start + ' to ' + play_event.args._end + ' result ' + play_event.args._result + ' winner ' + play_event.args._winner);
+                div.appendChild(text);
+                article.appendChild(div);
+            }
+        };
+
+        var render = function (data) {
+            var section = document.getElementById('section');
+            var article = document.createElement('article');
+            article.id = data.address;
+            for (var key in data) {
+                if (key == 'contract') {
+                    continue;
+                }
+                var span = document.createElement('span');
+                span.id = data.address + '-' + key;
+                var text = document.createTextNode(data[key]);
+                span.appendChild(text);
+                var div = document.createElement('div');
+                var text = document.createTextNode(key + ': ');
+                div.appendChild(text);
+                div.appendChild(span);
+                article.appendChild(div);
+            }
+            var div = document.createElement('div');
+            div.id = data.address + '-error';
+            div.style = 'color: #f00;';
+            var text = document.createTextNode('');
+            div.appendChild(text);
+            article.appendChild(div);
+
+            var div = document.createElement('div');
+            var text = document.createTextNode('START: 0x');
+            div.appendChild(text);
+
+            var input = document.createElement('input');
+            input.id = 'start';
+            input.size = 2;
+            input.maxlength = 2;
+            div.appendChild(input);
+            article.appendChild(div);
+
+            var text = document.createTextNode(' END: 0x');
+            div.appendChild(text);
+
+            var input = document.createElement('input');
+            input.id = 'end';
+            input.size = 2;
+            input.maxlength = 2;
+            div.appendChild(input);
+            article.appendChild(div);
+
+            var text = document.createTextNode(' FEE: ');
+            div.appendChild(text);
+
+            var input = document.createElement('input');
+            input.id = 'fee';
+            div.appendChild(input);
+            article.appendChild(div);
+
+            var input = document.createElement('input');
+            input.id = data.address + '-' + 'submit';
+            input.type = 'button';
+            input.value = 'go lucky range, do you shit.'
+            input.addEventListener('click', function () {
+                play(data);
+            });
+            div.appendChild(input);
+            article.appendChild(div);
+
+            section.appendChild(article);
+        };
+
+        var play = function (data) {
+            document.getElementById(data.address + '-error').innerText = '';
+            var start = document.getElementById('start').value;
+            var end = document.getElementById('end').value;
+            var fee = document.getElementById('fee').value;
+            if (start.length == 2 && start.match(/[0-9a-f]{2}/) &&
+                end.length == 2 && end.match(/[0-9a-f]{2}/) &&
+                fee.length > 0 && fee.match(/[0-9]+/)) {
+                start = "0x" + start;
+                end = "0x" + end;
+                var fee = new BigNumber(fee);
+                data.contract.play(start, end, { from : web3.eth.accounts[0], value: fee }, function (e, r) {
+                    if (e) {
+                        document.getElementById(data.address + '-error').innerText = e.message;
+                        console.log(e.message);
+                    }
+                    if (r) {
+                        console.log('play tx ' + r);
+                    }
+                });
+            }
+            else {
+                document.getElementById(data.address + '-error').innerText = 'enter start and end bytes';
+            }
+        };
+
+        var address = '0x77498d72120f97bf415a2bdaf1903c4b43d349af';
+        var contract = web3.eth.contract(abi);
+        var ETHBlockByte = contract.at(address);
+        init(address, ETHBlockByte);
+
+        return { play: play };
+    };
+
+    var app = null;
+    window.addEventListener('load', function() {
+        app = bootstrap();
+    }, false );
+</script>
+</head>
+
+<body>
+    <h1>ETHBlockByte</h1>
+
+    <div id="error"></div>
+
+    <section id="section">
+    </section>
+</body>
+
+</html>
