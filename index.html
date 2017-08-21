@@ -3,34 +3,46 @@
 <head>
 <title>ETHBlockByte</title>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script type="text/javascript" src="node_modules/bignumber.js/bignumber.min.js"></script>
 <script type="text/javascript" src="node_modules/web3/dist/web3-light.js"></script>
+<link href="css/nouislider.min.css?v=1000" rel="stylesheet">
+<script src="js/nouislider.min.js?v=1000"></script>
 <style>
 body, input, button {
     font-family: monospace;
     font-size: 1.2rem;
+    background-color: #fff;
+}
+section {
+    width: 640px;
 }
 article {
     border: 3px dashed #ddd;
     margin-bottom: 20px;
 }
-span[id$='-max_fee'] {
-    color: #800;
+#max_fee {
+    color: #a00;
 }
-span[id$='-balance'] {
-    color: #080;
+#balance {
+    color: #0a0;
 }
 .winner {
-    color: #080;
+    color: #0a0;
 }
-div {
+.line {
+    padding: 0 20px;
     font-weight: bold;
     margin: 10px 0;
     border-bottom: 1px dotted #ccc;
 }
-div span {
+.line span {
     font-weight: normal;
     float: right;
+}
+#submit {
+    margin: 0 100px 60px 100px;
+    width: 400px;
 }
 #error {
     color: #f00;
@@ -38,6 +50,16 @@ div span {
 time {
     display: inline-block;
     width: 200px;
+}
+#guess-slider, #fee-slider {
+    width: 400px;
+    margin: 60px 100px;
+}
+.red {
+    background-color: #a00;
+}
+.green {
+    background-color: #0a0;
 }
 </style>
 
@@ -72,11 +94,10 @@ time {
             return {
                 contract: contract,
                 address: address,
-                name: null,
                 owner: null,
+                create_block: 0,
                 balance: 0,
                 max_fee: 0,
-                create_block: 0,
                 last_result: null
             };
         };
@@ -85,7 +106,20 @@ time {
             var proxy = new Proxy(data(address, contract), {
                 set: function (obj, prop, value) {
                     obj[prop] = value;
-                    document.getElementById(address + '-' + prop).innerText = value;
+                    switch (prop) {
+                        case 'balance':
+                        case 'max_fee':
+                            document.getElementById(prop).innerText = web3.fromWei(value, 'ether') + 'ETH';
+                        break;
+
+                        case 'last_result':
+                            document.getElementById(prop).innerText = parseInt(value);
+                        break;
+
+                        default:
+                            document.getElementById(prop).innerText = value;
+                        break;
+                    }
                     return true;
                 }
             });
@@ -93,11 +127,17 @@ time {
                 switch (r.event) {
                     case 'Play':
                         render_play(r);
-                        proxy.last_result = r.args._result;
+                        proxy.last_result = parseInt(r.args._result);
                     break;
 
                     case 'Balance':
                         proxy.balance = r.args._balance;
+                        proxy.contract.max_fee(function(e, r) {
+                            proxy.max_fee = r;
+                            var step = 1000000000000000; // 0.001 ETH
+                            max_fee = parseInt(r / step * step);
+                            document.getElementById('fee-slider').noUiSlider.updateOptions({range: { min: step, max: max_fee }});
+                        });
                     break;
 
                     case 'Destroy':
@@ -122,9 +162,11 @@ time {
         var collect_data = function (data) {
             var contract = data.contract;
             web3.eth.getBalance(data.address, function (e, r) { data.balance = r; });
-            contract.name(function (e, r) { data.name = r; });
             contract.owner(function (e, r) { data.owner = r; });
-            contract.max_fee(function (e, r) { data.max_fee = r; });
+            contract.max_fee(function (e, r) {
+                data.max_fee = r;
+                create_sliders(r);
+            });
             contract.create_block(function (e, r) {
                 data.create_block = r;
                 setTimeout(function () {
@@ -167,6 +209,7 @@ time {
                 var article = document.getElementById('play');
                 var div = document.createElement('div');
                 div.id = id;
+                div.className = 'line';
 
                 var time = document.createElement('time');
                 time.dataset.timestamp = play_event.args._time;
@@ -175,9 +218,9 @@ time {
                 div.appendChild(time);
 
                 if (play_event.args._winner) {
-                    div.className = 'winner';
+                    div.className = 'line winner';
                 }
-                var text = document.createTextNode('start: ' + play_event.args._start + ' end: ' + play_event.args._end + ' result: ' + play_event.args._result);
+                var text = document.createTextNode('start: ' + parseInt(play_event.args._start) + ' end: ' + parseInt(play_event.args._end) + ' result: ' + parseInt(play_event.args._result));
                 div.appendChild(text);
                 article.prepend(div);
             }
@@ -192,62 +235,48 @@ time {
                     continue;
                 }
                 var span = document.createElement('span');
-                span.id = data.address + '-' + key;
+                span.id = key;
                 var text = document.createTextNode(data[key]);
                 span.appendChild(text);
                 var div = document.createElement('div');
+                div.className = 'line';
                 var text = document.createTextNode(key + ': ');
                 div.appendChild(text);
                 div.appendChild(span);
                 article.appendChild(div);
             }
             var div = document.createElement('div');
-            div.id = data.address + '-error';
+            div.className = 'line';
+            div.id = 'play-error';
             div.style = 'color: #f00;';
             var text = document.createTextNode('');
             div.appendChild(text);
             article.appendChild(div);
 
             var div = document.createElement('div');
-            var text = document.createTextNode('START: 0x');
-            div.appendChild(text);
+            div.className = 'line';
+
+            var guess_slider = document.createElement('div');
+            guess_slider.id = 'guess-slider';
+            div.appendChild(guess_slider);
+
+            var fee_slider = document.createElement('div');
+            fee_slider.id = 'fee-slider';
+            div.appendChild(fee_slider);
 
             var input = document.createElement('input');
-            input.id = 'start';
-            input.size = 2;
-            input.maxlength = 2;
-            div.appendChild(input);
-            article.appendChild(div);
-
-            var text = document.createTextNode(' END: 0x');
-            div.appendChild(text);
-
-            var input = document.createElement('input');
-            input.id = 'end';
-            input.size = 2;
-            input.maxlength = 2;
-            div.appendChild(input);
-            article.appendChild(div);
-
-            var text = document.createTextNode(' FEE: ');
-            div.appendChild(text);
-
-            var input = document.createElement('input');
-            input.id = 'fee';
-            div.appendChild(input);
-            article.appendChild(div);
-
-            var input = document.createElement('input');
-            input.id = data.address + '-' + 'submit';
+            input.id = 'submit';
             input.type = 'button';
-            input.value = 'go lucky range, do your shit.'
+            input.value = 'PLAY'
             input.addEventListener('click', function () {
                 play(data);
             });
             div.appendChild(input);
+
             article.appendChild(div);
 
             var div = document.createElement('div');
+            div.className = 'line';
             div.id = 'play';
             article.appendChild(div);
 
@@ -258,20 +287,68 @@ time {
 			}, 60000);
         };
 
+        var create_sliders = function (max_fee) {
+            var guess_slider = document.getElementById('guess-slider');
+            noUiSlider.create(guess_slider, {
+                start: [1, 255],
+                step: 1,
+                behaviour: 'drag',
+                connect: [true, true, true],
+                tooltips: true,
+                range: {
+                    'min': 1,
+                    'max': 255
+                },
+                format: {
+                    to: function (value) { return parseInt(value); },
+                    from: function (value) { return parseInt(value); }
+                }
+            });
+            var connect = guess_slider.querySelectorAll('.noUi-connect');
+            connect[0].classList.add('red');
+            connect[1].classList.add('green');
+            connect[2].classList.add('red');
+
+            var step = 1000000000000000; // 0.001 ETH
+            max_fee = parseInt(max_fee / step * step);
+
+            var fee_slider = document.getElementById('fee-slider');
+            noUiSlider.create(fee_slider, {
+                start: 0.1,
+                step: step,
+                connect: [true, false],
+                tooltips: true,
+                range: {
+                    'min': step,
+                    'max': max_fee
+                },
+                format: {
+                    to: function (value) { return parseFloat(web3.fromWei(value, 'ether')).toFixed(3) + 'ETH'; },
+                    from: function (value) { return web3.toWei(value.replace('ETH',''), 'ether'); }
+                }
+            });
+            var connect = fee_slider.querySelectorAll('.noUi-connect');
+            connect[0].classList.add('green');
+        };
+
         var play = function (data) {
-            document.getElementById(data.address + '-error').innerText = '';
-            var start = document.getElementById('start').value;
-            var end = document.getElementById('end').value;
-            var fee = document.getElementById('fee').value;
+            if (!web3.eth.accounts[0]) {
+                document.getElementById('play-error').innerText = 'Unlock metamstk account';
+                return;
+            }
+            document.getElementById('play-error').innerText = '';
+            var guess_slider = document.getElementById('guess-slider').noUiSlider.get()
+            var start = ('0' + guess_slider[0].toString(16)).slice(-2);
+            var end = ('0' + guess_slider[1].toString(16)).slice(-2);
+            var fee = web3.toWei(document.getElementById('fee-slider').noUiSlider.get().replace('ETH',''), 'ether');
             if (start.length == 2 && start.match(/[0-9a-f]{2}/) &&
                 end.length == 2 && end.match(/[0-9a-f]{2}/) &&
                 fee.length > 0 && fee.match(/[0-9]+/)) {
                 start = "0x" + start;
                 end = "0x" + end;
-                var fee = new BigNumber(fee);
                 data.contract.play(start, end, { from : web3.eth.accounts[0], value: fee }, function (e, r) {
                     if (e) {
-                        document.getElementById(data.address + '-error').innerText = e.message;
+                        document.getElementById('play-error').innerText = e.message;
                         console.log(e.message);
                     }
                     if (r) {
@@ -280,11 +357,11 @@ time {
                 });
             }
             else {
-                document.getElementById(data.address + '-error').innerText = 'enter start and end bytes';
+                document.getElementById('play-error').innerText = 'enter start and end bytes';
             }
         };
 
-        var address = '0x77498d72120f97bf415a2bdaf1903c4b43d349af';
+        var address = '0x995f617066a6968749eb980c2613314f4d45d4ab';
         var contract = web3.eth.contract(abi);
         var ETHBlockByte = contract.at(address);
         init(address, ETHBlockByte);
