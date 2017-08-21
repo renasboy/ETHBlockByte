@@ -12,10 +12,12 @@
 body, input, button {
     font-family: monospace;
     font-size: 1.2rem;
-    background-color: #fff;
+    background-color: #eee;
+    width: 640px;
+    margin: 0 auto;
 }
 section {
-    width: 640px;
+    background-color: #fff;
 }
 article {
     border: 3px dashed #ddd;
@@ -27,8 +29,14 @@ article {
 #balance {
     color: #0a0;
 }
+#last_result {
+    color: #008;
+}
 .winner {
     color: #0a0;
+}
+a {
+    color: #555;
 }
 .line {
     padding: 0 20px;
@@ -42,7 +50,15 @@ article {
 }
 #submit {
     margin: 0 100px 60px 100px;
+    padding: 20px 0;
     width: 400px;
+}
+h3 {
+    text-align: center;
+}
+#account {
+    float: right;
+    color: #080;
 }
 #error {
     color: #f00;
@@ -54,6 +70,9 @@ time {
 #guess-slider, #fee-slider {
     width: 400px;
     margin: 60px 100px;
+}
+#play {
+    color: #aaa;
 }
 .red {
     background-color: #a00;
@@ -83,6 +102,11 @@ time {
                 if (web3.eth.accounts[0]) {
                     clearInterval(interval);
                     document.getElementById('error').innerText = '';
+                    var interval = setInterval(function () {
+                        web3.eth.getBalance(web3.eth.accounts[0], function (e, r) {
+                            document.getElementById('account').innerText = parseFloat(web3.fromWei(r, 'ether')).toFixed(5) + ' ETH';
+                        });
+                    }, 2000);
                 }
                 else {
                     document.getElementById('error').innerText = 'Unlock metamstk account';
@@ -109,7 +133,7 @@ time {
                     switch (prop) {
                         case 'balance':
                         case 'max_fee':
-                            document.getElementById(prop).innerText = parseFloat(web3.fromWei(value, 'ether')).toFixed(5) + 'ETH';
+                            document.getElementById(prop).innerText = parseFloat(web3.fromWei(value, 'ether')).toFixed(5) + ' ETH';
                         break;
 
                         case 'last_result':
@@ -124,10 +148,6 @@ time {
                             a.innerText = value;
                             document.getElementById(prop).removeChild(document.getElementById(prop).firstChild);
                             document.getElementById(prop).append(a);
-                        break;
-
-                        default:
-                            document.getElementById(prop).innerText = value;
                         break;
                     }
                     return true;
@@ -144,7 +164,7 @@ time {
                         proxy.balance = r.args._balance;
                         proxy.contract.max_fee(function(e, r) {
                             proxy.max_fee = r;
-                            max_fee = parseInt(r / step * step);
+                            max_fee = parseInt(parseInt(r / step) * step);
                             document.getElementById('fee-slider').noUiSlider.updateOptions({range: { min: step, max: max_fee }});
                         });
                     break;
@@ -241,7 +261,7 @@ time {
             var article = document.createElement('article');
             article.id = data.address;
             for (var key in data) {
-                if (key == 'contract') {
+                if (['contract', 'create_block'].indexOf(key) != -1) {
                     continue;
                 }
                 var span = document.createElement('span');
@@ -250,7 +270,7 @@ time {
                 span.appendChild(text);
                 var div = document.createElement('div');
                 div.className = 'line';
-                var text = document.createTextNode(key + ': ');
+                var text = document.createTextNode(key.replace('_', ' ') + ': ');
                 div.appendChild(text);
                 div.appendChild(span);
                 article.appendChild(div);
@@ -285,6 +305,11 @@ time {
 
             article.appendChild(div);
 
+            var h3 = document.createElement('h3');
+            var text = document.createTextNode('Play history');
+            h3.appendChild(text);
+            article.appendChild(h3);
+
             var div = document.createElement('div');
             div.className = 'line';
             div.id = 'play';
@@ -300,7 +325,7 @@ time {
         var create_sliders = function (max_fee) {
             var guess_slider = document.getElementById('guess-slider');
             noUiSlider.create(guess_slider, {
-                start: [1, 255],
+                start: [30, 225],
                 step: 1,
                 behaviour: 'drag',
                 connect: [true, true, true],
@@ -318,9 +343,12 @@ time {
             connect[0].classList.add('red');
             connect[1].classList.add('green');
             connect[2].classList.add('red');
+            guess_slider.noUiSlider.on('set', function () {
+                calculate_prize();
+            });
 
-            max_fee = parseInt(max_fee / step * step);
-
+            
+            max_fee = parseInt(parseInt(max_fee / step) * step);
             var fee_slider = document.getElementById('fee-slider');
             noUiSlider.create(fee_slider, {
                 start: 0.1,
@@ -332,12 +360,35 @@ time {
                     'max': max_fee
                 },
                 format: {
-                    to: function (value) { return parseFloat(web3.fromWei(value, 'ether')).toFixed(3) + 'ETH'; },
-                    from: function (value) { return web3.toWei(value.replace('ETH',''), 'ether'); }
+                    to: function (value) { return parseFloat(web3.fromWei(value, 'ether')).toFixed(3) + ' ETH'; },
+                    from: function (value) { return web3.toWei(value.replace(' ETH',''), 'ether'); }
                 }
             });
             var connect = fee_slider.querySelectorAll('.noUi-connect');
             connect[0].classList.add('green');
+            fee_slider.noUiSlider.on('set', function () {
+                calculate_prize();
+            });
+            calculate_prize();
+        };
+
+        var calculate_prize = function () {
+            var guess_slider = document.getElementById('guess-slider').noUiSlider.get()
+            var start = guess_slider[0];
+            var end = guess_slider[1];
+            var fee = web3.toWei(document.getElementById('fee-slider').noUiSlider.get().replace(' ETH',''), 'ether');
+            fee = new BigNumber(fee);
+
+            // from .sol
+            var range = end - start + 1;
+            var percentage = 100 - parseInt(range * 100 / 255);
+            var prize = fee.times(percentage).div(100);
+            var credit = fee.plus(prize);
+
+            fee = parseFloat(web3.fromWei(fee, 'ether')).toFixed(3) + ' ETH';
+            credit = parseFloat(web3.fromWei(credit, 'ether')).toFixed(3) + ' ETH';
+
+            document.getElementById('submit').value = 'PLAY ' + fee + ' and WIN ' + credit;
         };
 
         var play = function (data) {
@@ -349,12 +400,13 @@ time {
             var guess_slider = document.getElementById('guess-slider').noUiSlider.get()
             var start = ('0' + guess_slider[0].toString(16)).slice(-2);
             var end = ('0' + guess_slider[1].toString(16)).slice(-2);
-            var fee = web3.toWei(document.getElementById('fee-slider').noUiSlider.get().replace('ETH',''), 'ether');
+            var fee = web3.toWei(document.getElementById('fee-slider').noUiSlider.get().replace(' ETH',''), 'ether');
             if (start.length == 2 && start.match(/[0-9a-f]{2}/) &&
                 end.length == 2 && end.match(/[0-9a-f]{2}/) &&
                 fee.length > 0 && fee.match(/[0-9]+/)) {
                 start = "0x" + start;
                 end = "0x" + end;
+                fee = new BigNumber(fee);
                 data.contract.play(start, end, { from : web3.eth.accounts[0], value: fee }, function (e, r) {
                     if (e) {
                         document.getElementById('play-error').innerText = e.message;
@@ -387,10 +439,10 @@ time {
 </head>
 
 <body>
-    <h1>ETHBlockByte</h1>
-
+    <hgroup>
+        <h1>ETHBlockByte <span id="account">0.00000 ETH</span></h1>
+    </hgroup>
     <div id="error"></div>
-
     <section id="section">
     </section>
 </body>
