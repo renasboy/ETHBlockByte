@@ -109,11 +109,21 @@ time {
                     switch (prop) {
                         case 'balance':
                         case 'max_fee':
-                            document.getElementById(prop).innerText = web3.fromWei(value, 'ether') + 'ETH';
+                            document.getElementById(prop).innerText = parseFloat(web3.fromWei(value, 'ether')).toFixed(5) + 'ETH';
                         break;
 
                         case 'last_result':
                             document.getElementById(prop).innerText = parseInt(value);
+                        break;
+
+                        case 'address':
+                        case 'owner':
+                            var a = document.createElement('a');
+                            a.setAttribute('href', 'https://ropsten.etherscan.io/address/' + value);
+                            a.setAttribute('target', '_blank');
+                            a.innerText = value;
+                            document.getElementById(prop).removeChild(document.getElementById(prop).firstChild);
+                            document.getElementById(prop).append(a);
                         break;
 
                         default:
@@ -134,7 +144,6 @@ time {
                         proxy.balance = r.args._balance;
                         proxy.contract.max_fee(function(e, r) {
                             proxy.max_fee = r;
-                            var step = 1000000000000000; // 0.001 ETH
                             max_fee = parseInt(r / step * step);
                             document.getElementById('fee-slider').noUiSlider.updateOptions({range: { min: step, max: max_fee }});
                         });
@@ -174,6 +183,7 @@ time {
                 }, 2000);
             });
             contract.last_result(function (e, r) { data.last_result = r; });
+            data.address = data.address;
         };
 
         var time_ago = function (timestamp) {
@@ -309,7 +319,6 @@ time {
             connect[1].classList.add('green');
             connect[2].classList.add('red');
 
-            var step = 1000000000000000; // 0.001 ETH
             max_fee = parseInt(max_fee / step * step);
 
             var fee_slider = document.getElementById('fee-slider');
@@ -364,6 +373,7 @@ time {
         var address = '0x995f617066a6968749eb980c2613314f4d45d4ab';
         var contract = web3.eth.contract(abi);
         var ETHBlockByte = contract.at(address);
+        var step = 1000000000000000; // 0.001 ETH
         init(address, ETHBlockByte);
 
         return { play: play };
