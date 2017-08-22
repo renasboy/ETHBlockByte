@@ -4,8 +4,8 @@
 <title>ETHBlockByte</title>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script type="text/javascript" src="node_modules/bignumber.js/bignumber.min.js"></script>
-<script type="text/javascript" src="node_modules/web3/dist/web3-light.js"></script>
+<script type="text/javascript" src="js/bignumber.min.js"></script>
+<script type="text/javascript" src="js/web3-light.js"></script>
 <link href="css/nouislider.min.css?v=1000" rel="stylesheet">
 <script src="js/nouislider.min.js?v=1000"></script>
 <style>
@@ -53,7 +53,7 @@ a {
     padding: 20px 0;
     width: 400px;
 }
-h3 {
+h3, h5 {
     text-align: center;
 }
 #account {
@@ -326,10 +326,20 @@ time {
 
             var div = document.createElement('div');
             div.className = 'line';
+            
+            var h5 = document.createElement('h5');
+            var text = document.createTextNode('Risk range from START to END, guess the RESULT between 1 and 255');
+            h5.appendChild(text);
+            div.appendChild(h5);
 
             var guess_slider = document.createElement('div');
             guess_slider.id = 'guess-slider';
             div.appendChild(guess_slider);
+
+            var h5 = document.createElement('h5');
+            var text = document.createTextNode('Participation fee to send in ETH (this controls the prize)');
+            h5.appendChild(text);
+            div.appendChild(h5);
 
             var fee_slider = document.createElement('div');
             fee_slider.id = 'fee-slider';
