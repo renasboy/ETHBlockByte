@@ -66,6 +66,7 @@ h3 {
 time {
     display: inline-block;
     width: 200px;
+	text-align: center;
 }
 #guess-slider, #fee-slider {
     width: 400px;
@@ -79,6 +80,20 @@ time {
 }
 .green {
     background-color: #0a0;
+}
+@keyframes pending {
+  0%   {background-color: darkred;}
+  25%  {background-color: orange;}
+  50%  {background-color: darkblue;}
+  75%  {background-color: darkgreen;}
+  100% {background-color: darkred;}
+}
+.pending {
+	padding: 10px 0;
+	background-color: red;
+    animation-name: pending;
+    animation-duration: 4s;
+    animation-iteration-count: infinite;
 }
 </style>
 
@@ -206,10 +221,14 @@ time {
             data.address = data.address;
         };
 
-        var time_ago = function (timestamp) {
+        var time_now = function () {
 			var d = new Date();
 			var now = Math.floor(d.getTime() / 1000);
-			var seconds = now - timestamp;
+            return now;
+        };
+
+        var time_ago = function (timestamp) {
+			var seconds = time_now() - timestamp;
 			if (seconds > 2 * 86400) {
                return Math.floor(seconds / 86400) + ' days ago';
 			}
@@ -232,28 +251,50 @@ time {
             }
         };
 
-        var render_play = function (play_event) {
-            id = play_event.transactionHash;
+        var wait_play = function (tx) {
+            id = tx;
             var el = document.getElementById(id);
             if (!el) {
                 var article = document.getElementById('play');
                 var div = document.createElement('div');
                 div.id = id;
-                div.className = 'line';
+                div.className = 'line pending';
 
                 var time = document.createElement('time');
-                time.dataset.timestamp = play_event.args._time;
-                var text = document.createTextNode(time_ago(play_event.args._time));
+                time.dataset.timestamp = time_now();
+                var text = document.createTextNode('NOW');
                 time.appendChild(text);
                 div.appendChild(time);
 
-                if (play_event.args._winner) {
-                    div.className = 'line winner';
-                }
-                var text = document.createTextNode('start: ' + parseInt(play_event.args._start) + ' end: ' + parseInt(play_event.args._end) + ' result: ' + parseInt(play_event.args._result));
+                var text = document.createTextNode('Tx pending, wating for sonerex');
                 div.appendChild(text);
                 article.prepend(div);
             }
+        };
+
+        var render_play = function (play_event) {
+            id = play_event.transactionHash;
+            var el = document.getElementById(id);
+            if (el) {
+                el.parentNode.removeChild(el);
+            }
+            var article = document.getElementById('play');
+            var div = document.createElement('div');
+            div.id = id;
+            div.className = 'line';
+
+            var time = document.createElement('time');
+            time.dataset.timestamp = play_event.args._time;
+            var text = document.createTextNode(time_ago(play_event.args._time));
+            time.appendChild(text);
+            div.appendChild(time);
+
+            if (play_event.args._winner) {
+                div.className = 'line winner';
+            }
+            var text = document.createTextNode('start: ' + parseInt(play_event.args._start) + ' end: ' + parseInt(play_event.args._end) + ' result: ' + parseInt(play_event.args._result));
+            div.appendChild(text);
+            article.prepend(div);
         };
 
         var render = function (data) {
@@ -409,10 +450,11 @@ time {
                 fee = new BigNumber(fee);
                 data.contract.play(start, end, { from : web3.eth.accounts[0], value: fee }, function (e, r) {
                     if (e) {
-                        document.getElementById('play-error').innerText = e.message;
+                        document.getElementById('play-error').innerText = 'Transaction was NOT completed, try again.';
                         console.log(e.message);
                     }
                     if (r) {
+                        wait_play(r);
                         console.log('play tx ' + r);
                     }
                 });
