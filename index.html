@@ -168,7 +168,7 @@ time {
                     return true;
                 }
             });
-            var all_events = proxy.contract.allEvents(function (e, r) {
+            var all_events = proxy.contract.allEvents({ fromBlock: 'latest' }, function (e, r) {
                 switch (r.event) {
                     case 'Play':
                         render_play(r);
