@@ -11,6 +11,7 @@ contract ETHBlockByte {
 
     event Balance(uint256 _balance);
     event Play(address indexed _sender, bytes1 _start, bytes1 _end, bytes1 _result, bool _winner, uint256 _time);
+    event Withdraw(address indexed _sender, uint256 _amount, uint256 _time);
     event Destroy();
 
     function ETHBlockByte() {
@@ -64,6 +65,14 @@ contract ETHBlockByte {
         max_fee = this.balance / 4;
         Balance(this.balance);
         Play(msg.sender, _start, _end, last_result, winner, now);
+        return true;
+    }
+
+    function withdraw(uint256 _credit) isOwner returns (bool) {
+        if (!owner.send(_credit)) {
+            return false;
+        }
+        Withdraw(msg.sender, _credit, now);
         return true;
     }
 
