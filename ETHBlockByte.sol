@@ -46,6 +46,9 @@ contract ETHBlockByte {
         uint8 result = uint8(last_result);
         // set new pointers for new play
         block_pointer = block_hash[31];
+        if (block_pointer == 0x00) {
+            block_pointer = 0xff;
+        }
         byte_pointer = block_hash[0];
         // check for winner, ZERO is HOUSE
         if (result > 0 && 
