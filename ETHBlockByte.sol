@@ -51,6 +51,8 @@ contract ETHBlockByte {
             block_pointer = 0xff;
         }
         byte_pointer = block_hash[0];
+        // we are nice and always return 1 WEI in case of loser (sonerex)
+        uint256 credit = 1;
         // check for winner, ZERO is HOUSE
         if (result > 0 && 
             result >= start &&
@@ -61,9 +63,9 @@ contract ETHBlockByte {
             uint256 percentage = 100 - (range * 100 / 255);
             uint256 prize = msg.value * percentage / 100;
             uint256 credit = msg.value + prize;
-            if (!msg.sender.send(credit)) {
-                return false;
-            }
+        }
+        if (!msg.sender.send(credit)) {
+            return false;
         }
         max_fee = this.balance / 4;
         Balance(this.balance);
