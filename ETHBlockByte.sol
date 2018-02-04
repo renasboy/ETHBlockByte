@@ -62,7 +62,7 @@ contract ETHBlockByte {
             uint256 range = end - start + 1;
             uint256 percentage = 100 - (range * 100 / 255);
             uint256 prize = msg.value * percentage / 100;
-            uint256 credit = msg.value + prize;
+            credit = msg.value + prize;
         }
         if (!msg.sender.send(credit)) {
             return false;
