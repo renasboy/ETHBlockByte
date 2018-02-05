@@ -61,7 +61,10 @@ contract ETHBlockByte {
             // there is a winner, calculate prize
             uint256 range = end - start + 1;
             uint256 percentage = 100 - (range * 100 / 255);
-            uint256 prize = msg.value * percentage / 100;
+            uint256 prize = 0;
+            if (percentage > 10) {
+                prize = msg.value * (percentage - 10) / 100;
+            }
             credit = msg.value + prize;
         }
         if (!msg.sender.send(credit)) {
