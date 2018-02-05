@@ -81,6 +81,7 @@ contract ETHBlockByte {
             return false;
         }
         Withdraw(msg.sender, _credit, now);
+        max_fee = this.balance / 4;
         return true;
     }
 
