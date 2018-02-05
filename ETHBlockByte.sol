@@ -14,7 +14,7 @@ contract ETHBlockByte {
     event Withdraw(address indexed _sender, uint256 _amount, uint256 _time);
     event Destroy();
 
-    function ETHBlockByte() {
+    function ETHBlockByte() public {
         owner = msg.sender;
         create_block = block.number; 
         block_pointer = 0xff;
@@ -30,7 +30,7 @@ contract ETHBlockByte {
         _;
     }
 
-    function play(bytes1 _start, bytes1 _end) payable isPaid returns (bool) {
+    function play(bytes1 _start, bytes1 _end) public payable isPaid returns (bool) {
         bool winner = false;
         // cast start and end to uint8
         uint8 start = uint8(_start);
@@ -76,7 +76,7 @@ contract ETHBlockByte {
         return true;
     }
 
-    function withdraw(uint256 _credit) isOwner returns (bool) {
+    function withdraw(uint256 _credit) public isOwner returns (bool) {
         if (!owner.send(_credit)) {
             return false;
         }
@@ -84,12 +84,12 @@ contract ETHBlockByte {
         return true;
     }
 
-    function destruct() isOwner {
+    function destruct() public isOwner {
         Destroy();
         selfdestruct(owner);
     }
 
-    function () payable {
+    function () public payable {
         max_fee = this.balance / 4;
         Balance(this.balance);
     }
