@@ -13,6 +13,7 @@ contract ETHBlockByte {
     event Balance(uint256 _balance);
     event Play(address indexed _sender, bytes1 _start, bytes1 _end, bytes1 _result, bool _winner, uint256 _time);
     event Withdraw(address indexed _sender, uint256 _amount, uint256 _time);
+    event Risk(uint256 _risk);
     event Destroy();
 
     function ETHBlockByte() public {
@@ -90,6 +91,7 @@ contract ETHBlockByte {
 
     function risk(uint256 _min_risk) public isOwner returns (bool) {
         min_risk = _min_risk;
+        Risk(min_risk);
         return true;
     }
 
