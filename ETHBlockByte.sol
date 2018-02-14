@@ -5,6 +5,7 @@ contract ETHBlockByte {
     address public owner;
     uint256 public max_fee;
     uint256 public create_block;
+    uint256 public min_risk;
     bytes1 public last_result;
     bytes1 private block_pointer;
     bytes1 private byte_pointer;
@@ -18,6 +19,7 @@ contract ETHBlockByte {
         owner = msg.sender;
         create_block = block.number; 
         block_pointer = 0xff;
+        min_risk = 40;
     }
 
     modifier isOwner() {
@@ -60,10 +62,11 @@ contract ETHBlockByte {
             winner = true;
             // there is a winner, calculate prize
             uint256 range = end - start + 1;
-            uint256 percentage = 100 - (range * 100 / 255);
+            uint256 percentage_risk = 100 - (range * 100 / 255);
             uint256 prize = 0;
-            if (percentage > 10) {
-                prize = msg.value * (percentage - 10) / 100;
+            if (percentage_risk > min_risk) {
+                uint256 percentage = ((percentage_risk - min_risk) * 100) / (100 - min_risk);
+                prize = msg.value * percentage / 100;
             }
             credit = msg.value + prize;
         }
@@ -82,6 +85,11 @@ contract ETHBlockByte {
         }
         Withdraw(msg.sender, _credit, now);
         max_fee = this.balance / 4;
+        return true;
+    }
+
+    function risk(uint256 _min_risk) public isOwner returns (bool) {
+        min_risk = _min_risk;
         return true;
     }
 
