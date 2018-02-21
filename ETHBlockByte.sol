@@ -72,7 +72,7 @@ contract ETHBlockByte {
             credit = msg.value + prize;
         }
         if (!msg.sender.send(credit)) {
-            return false;
+            revert();
         }
         max_fee = this.balance / 4;
         Balance(this.balance);
@@ -82,7 +82,7 @@ contract ETHBlockByte {
 
     function withdraw(uint256 _credit) public isOwner returns (bool) {
         if (!owner.send(_credit)) {
-            return false;
+            revert();
         }
         Withdraw(msg.sender, _credit, now);
         max_fee = this.balance / 4;
