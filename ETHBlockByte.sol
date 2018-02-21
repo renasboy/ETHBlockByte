@@ -45,9 +45,9 @@ contract ETHBlockByte {
         // get result block hash
         bytes32 block_hash = block.blockhash(block.number - uint8(block_pointer));
         // get result block byte
-        last_result = block_hash[uint8(byte_pointer) % 32];
+        bytes1 internal_result = block_hash[uint8(byte_pointer) % 32];
         // case result to uint8
-        uint8 result = uint8(last_result);
+        uint8 result = uint8(internal_result);
         // set new pointers for new play
         block_pointer = block_hash[31];
         if (block_pointer == 0x00) {
@@ -74,6 +74,7 @@ contract ETHBlockByte {
         if (!msg.sender.send(credit)) {
             revert();
         }
+        last_result = internal_result;
         max_fee = this.balance / 4;
         Balance(this.balance);
         Play(msg.sender, _start, _end, last_result, winner, now);
