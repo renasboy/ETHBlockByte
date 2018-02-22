@@ -54,7 +54,6 @@ contract ETHBlockByte {
             block_pointer = 0xff;
         }
         byte_pointer = block_hash[0];
-        // we are nice and always return 1 WEI in case of loser (sonerex)
         // check for winner, ZERO is HOUSE
         if (result > 0 && 
             result >= start &&
