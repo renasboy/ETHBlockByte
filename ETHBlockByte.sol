@@ -9,6 +9,7 @@ contract ETHBlockByte {
     bytes1 public last_result;
     bytes1 private block_pointer;
     bytes1 private byte_pointer;
+    bool private running;
 
     event Balance(uint256 _balance);
     event Play(address indexed _sender, bytes1 _start, bytes1 _end, bytes1 _result, bool _winner, uint256 _time);
@@ -21,6 +22,7 @@ contract ETHBlockByte {
         create_block = block.number; 
         block_pointer = 0xff;
         min_risk = 40;
+        running = false;
     }
 
     modifier isOwner() {
@@ -34,6 +36,10 @@ contract ETHBlockByte {
     }
 
     function play(bytes1 _start, bytes1 _end) public payable isPaid returns (bool) {
+        if (running) {
+            return true;
+        }
+        running = true;
         bool winner = false;
         // cast start and end to uint8
         uint8 start = uint8(_start);
@@ -76,6 +82,7 @@ contract ETHBlockByte {
         max_fee = this.balance / 4;
         Balance(this.balance);
         Play(msg.sender, _start, _end, last_result, winner, now);
+        running = false;
         return true;
     }
 
