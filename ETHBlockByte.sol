@@ -36,6 +36,9 @@ contract ETHBlockByte {
     }
 
     function play(bytes1 _start, bytes1 _end) public payable isPaid returns (bool) {
+        if (tx.origin != msg.sender) {
+            return true;
+        }
         if (running) {
             return true;
         }
