@@ -17,12 +17,13 @@ contract ETHBlockByte {
     event Risk(uint256 _risk);
     event Destroy();
 
-    function ETHBlockByte() public {
+    function ETHBlockByte() public payable {
         owner = msg.sender;
         create_block = block.number; 
         block_pointer = 0xff;
         min_risk = 40;
         running = false;
+        max_fee = msg.value / 4;
     }
 
     modifier isOwner() {
